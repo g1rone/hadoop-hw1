@@ -70,6 +70,24 @@ done
 echo "=== Hadoop installation finished ==="
 
 
+echo "=== Preparing Hadoop log directories ==="
+
+sudo mkdir -p "$HADOOP_DIR/logs"
+sudo chown -R team:team "$HADOOP_DIR/logs"
+
+for host in "${NODES[@]}"; do
+    echo "Preparing logs on $host"
+
+    ssh -o BatchMode=yes -o ConnectTimeout=10 -o IdentitiesOnly=yes -i "$SSH_KEY" "team@$host" "
+        sudo mkdir -p '$HADOOP_DIR/logs'
+        sudo chown -R team:team '$HADOOP_DIR/logs'
+    "
+done
+
+echo "=== Hadoop log directories prepared ==="
+
+
+
 echo "=== Configuring JAVA_HOME for Hadoop on edge ==="
 
 JAVA_HOME_PATH=$(dirname "$(dirname "$(readlink -f "$(command -v java)")")")
@@ -166,3 +184,39 @@ ssh -o BatchMode=yes -o ConnectTimeout=10 -o IdentitiesOnly=yes -i "$SSH_KEY" te
 "
 
 echo "=== NameNode format checked ==="
+
+
+
+echo "=== Starting HDFS ==="
+
+if ! ssh -o BatchMode=yes -o ConnectTimeout=10 -o IdentitiesOnly=yes -i "$SSH_KEY" team@10.22.0.11 "jps | awk '{print \$2}' | grep -qx NameNode"; then
+    echo "Starting NameNode on 10.22.0.11"
+    ssh -o BatchMode=yes -o ConnectTimeout=10 -o IdentitiesOnly=yes -i "$SSH_KEY" team@10.22.0.11 "'$HADOOP_DIR/bin/hdfs' --daemon start namenode"
+else
+    echo "NameNode already running"
+fi
+
+if ! jps | awk '{print $2}' | grep -qx DataNode; then
+    echo "Starting DataNode on edge"
+    "$HADOOP_DIR/bin/hdfs" --daemon start datanode
+else
+    echo "DataNode already running on edge"
+fi
+
+for host in 10.22.0.12 10.22.0.13; do
+    if ! ssh -o BatchMode=yes -o ConnectTimeout=10 -o IdentitiesOnly=yes -i "$SSH_KEY" "team@$host" "jps | awk '{print \$2}' | grep -qx DataNode"; then
+        echo "Starting DataNode on $host"
+        ssh -o BatchMode=yes -o ConnectTimeout=10 -o IdentitiesOnly=yes -i "$SSH_KEY" "team@$host" "'$HADOOP_DIR/bin/hdfs' --daemon start datanode"
+    else
+        echo "DataNode already running on $host"
+    fi
+done
+
+if ! jps | awk '{print $2}' | grep -qx SecondaryNameNode; then
+    echo "Starting SecondaryNameNode on edge"
+    "$HADOOP_DIR/bin/hdfs" --daemon start secondarynamenode
+else
+    echo "SecondaryNameNode already running"
+fi
+
+echo "=== HDFS started ==="
