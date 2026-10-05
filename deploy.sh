@@ -54,11 +54,11 @@ echo "=== Installing Hadoop on remote nodes ==="
 for host in "${NODES[@]}"; do
     echo "Checking $host"
 
-    ssh -o BatchMode=yes -o ConnectTimeout=10 -o IdentitiesOnly=yes -i "$SSH_KEY" "team@$host" '
-        if [ -x "$HADOOP_DIR/bin/hadoop" ]; then
+    ssh -o BatchMode=yes -o ConnectTimeout=10 -o IdentitiesOnly=yes -i "$SSH_KEY" "team@$host" "
+        if [ -x '$HADOOP_DIR/bin/hadoop' ]; then
             echo 'Hadoop already installed'
         else
-            wget --show-progress "$HADOOP_URL" -O /tmp/hadoop.tar.gz
+            wget --show-progress '$HADOOP_URL' -O /tmp/hadoop.tar.gz
             sudo tar -xzf /tmp/hadoop.tar.gz -C /opt
             rm /tmp/hadoop.tar.gz
         fi
