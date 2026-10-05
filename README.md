@@ -274,11 +274,7 @@ hdfs namenode -format -nonInteractive
 
 `reset.sh` используется для полного удаления установленного кластера.
 
-Перед выполнением требуется ввести:
-
-```text
-RESET
-```
+Перед выполнением требуется ввести RESET.
 
 ## 1. Остановка HDFS
 
@@ -481,7 +477,7 @@ NameNode UI:
 Через SSH tunnel:
 
 ```bash
-ssh -L 9870:10.22.0.11:9870 team@<EDGE_PUBLIC_IP>
+ssh -L 9870:10.22.0.11:9870 team@2.59.80.29
 ```
 
 После этого:
@@ -527,12 +523,9 @@ Total Datanode Volume Failures: 0
 
 Скриншот NameNode UI:
 
-```markdown
-![NameNode UI](images/namenode-ui.png)
-```
+![NameNode UI](ui.png)
 
 Скриншот проверки логов:
 
-```markdown
-![Logs check](images/logs-check.png)
-```
+![Logs check](logs.png)
+
