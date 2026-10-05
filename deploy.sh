@@ -6,7 +6,6 @@ SSH_KEY="$HOME/.ssh/team_internal"
 HADOOP_VERSION="3.4.1"
 HADOOP_DIR="/opt/hadoop-$HADOOP_VERSION"
 HADOOP_URL="https://downloads.apache.org/hadoop/core/hadoop-$HADOOP_VERSION/hadoop-$HADOOP_VERSION.tar.gz"
-JAVA_HOME_PATH="/usr/lib/jvm/java-11-openjdk-amd64"
 HADOOP_ENV="$HADOOP_DIR/etc/hadoop/hadoop-env.sh"
 NODES=(
     "10.22.0.11"
@@ -100,15 +99,6 @@ else
 fi
 
 echo "JAVA_HOME set to $JAVA_HOME_PATH on edge"
-
-
-echo "=== Configuring JAVA_HOME on edge ==="
-
-if grep -q '^export JAVA_HOME=' "$HADOOP_ENV"; then
-    sudo sed -i "s|^export JAVA_HOME=.*|export JAVA_HOME=$JAVA_HOME_PATH|" "$HADOOP_ENV"
-else
-    echo "export JAVA_HOME=$JAVA_HOME_PATH" | sudo tee -a "$HADOOP_ENV" >/dev/null
-fi
 
 echo "=== Configuring JAVA_HOME on remote nodes ==="
 

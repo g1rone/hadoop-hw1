@@ -79,16 +79,16 @@ echo "=== Removing Java from remote nodes ==="
 for host in "${NODES[@]}"; do
     echo "Removing Java from $host"
 
-    ssh -o BatchMode=yes -o ConnectTimeout=10 -o IdentitiesOnly=yes -i "$SSH_KEY" "team@$host" '
-        JAVA_PACKAGES=$(dpkg-query -W -f="${binary:Package}\n" "openjdk-11-*" 2>/dev/null || true)
+    ssh -o BatchMode=yes -o ConnectTimeout=10 -o IdentitiesOnly=yes -i "$SSH_KEY" "team@$host" "
+        JAVA_PACKAGES=\$(dpkg-query -W -f='\${binary:Package}\n' 'openjdk-11-*' 2>/dev/null || true)
 
-        if [ -n "$JAVA_PACKAGES" ]; then
-            sudo apt-get purge -y $JAVA_PACKAGES
+        if [ -n \"\$JAVA_PACKAGES\" ]; then
+            sudo apt-get purge -y \$JAVA_PACKAGES
             sudo apt-get autoremove -y
         else
-            echo "Java already absent"
+            echo 'Java already absent'
         fi
-    '
+    "
 done
 
 echo
