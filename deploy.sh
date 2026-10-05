@@ -6,6 +6,8 @@ SSH_KEY="$HOME/.ssh/team_internal"
 HADOOP_VERSION="3.4.1"
 HADOOP_DIR="/opt/hadoop-$HADOOP_VERSION"
 HADOOP_URL="https://downloads.apache.org/hadoop/core/hadoop-$HADOOP_VERSION/hadoop-$HADOOP_VERSION.tar.gz"
+JAVA_HOME_PATH="/usr/lib/jvm/java-11-openjdk-amd64"
+HADOOP_ENV="$HADOOP_DIR/etc/hadoop/hadoop-env.sh"
 NODES=(
     "10.22.0.11"
     "10.22.0.12"
@@ -66,3 +68,101 @@ for host in "${NODES[@]}"; do
 done
 
 echo "=== Hadoop installation finished ==="
+
+
+echo "=== Configuring JAVA_HOME for Hadoop on edge ==="
+
+JAVA_HOME_PATH=$(dirname "$(dirname "$(readlink -f "$(command -v java)")")")
+HADOOP_ENV="$HADOOP_DIR/etc/hadoop/hadoop-env.sh"
+
+if grep -q '^export JAVA_HOME=' "$HADOOP_ENV"; then
+    sudo sed -i "s|^export JAVA_HOME=.*|export JAVA_HOME=$JAVA_HOME_PATH|" "$HADOOP_ENV"
+else
+    echo "export JAVA_HOME=$JAVA_HOME_PATH" | sudo tee -a "$HADOOP_ENV" >/dev/null
+fi
+
+echo "JAVA_HOME set to $JAVA_HOME_PATH on edge"
+
+
+echo "=== Configuring JAVA_HOME on edge ==="
+
+if grep -q '^export JAVA_HOME=' "$HADOOP_ENV"; then
+    sudo sed -i "s|^export JAVA_HOME=.*|export JAVA_HOME=$JAVA_HOME_PATH|" "$HADOOP_ENV"
+else
+    echo "export JAVA_HOME=$JAVA_HOME_PATH" | sudo tee -a "$HADOOP_ENV" >/dev/null
+fi
+
+echo "=== Configuring JAVA_HOME on remote nodes ==="
+
+for host in "${NODES[@]}"; do
+    echo "Configuring $host"
+
+    ssh -o BatchMode=yes -o ConnectTimeout=10 -o IdentitiesOnly=yes -i "$SSH_KEY" "team@$host" "
+        if grep -q '^export JAVA_HOME=' '$HADOOP_ENV'; then
+            sudo sed -i 's|^export JAVA_HOME=.*|export JAVA_HOME=$JAVA_HOME_PATH|' '$HADOOP_ENV'
+        else
+            echo 'export JAVA_HOME=$JAVA_HOME_PATH' | sudo tee -a '$HADOOP_ENV' >/dev/null
+        fi
+    "
+done
+
+echo "=== JAVA_HOME configuration finished ==="
+
+
+
+echo "=== Deploying Hadoop configuration on edge ==="
+
+sudo cp config/core-site.xml "$HADOOP_DIR/etc/hadoop/core-site.xml"
+sudo cp config/hdfs-site.xml "$HADOOP_DIR/etc/hadoop/hdfs-site.xml"
+sudo cp config/workers "$HADOOP_DIR/etc/hadoop/workers"
+
+echo "=== Deploying Hadoop configuration on remote nodes ==="
+
+for host in "${NODES[@]}"; do
+    echo "Configuring $host"
+
+    scp -o BatchMode=yes -o ConnectTimeout=10 -o IdentitiesOnly=yes -i "$SSH_KEY" config/core-site.xml config/hdfs-site.xml config/workers "team@$host:/tmp/"
+
+    ssh -o BatchMode=yes -o ConnectTimeout=10 -o IdentitiesOnly=yes -i "$SSH_KEY" "team@$host" "
+        sudo cp /tmp/core-site.xml '$HADOOP_DIR/etc/hadoop/core-site.xml'
+        sudo cp /tmp/hdfs-site.xml '$HADOOP_DIR/etc/hadoop/hdfs-site.xml'
+        sudo cp /tmp/workers '$HADOOP_DIR/etc/hadoop/workers'
+
+        rm /tmp/core-site.xml
+        rm /tmp/hdfs-site.xml
+        rm /tmp/workers
+    "
+done
+
+echo "=== Hadoop configuration deployed ==="
+
+
+
+echo "=== Creating HDFS directories ==="
+
+mkdir -p /home/team/hadoop-data/datanode
+mkdir -p /home/team/hadoop-data/secondary
+
+ssh -o BatchMode=yes -o ConnectTimeout=10 -o IdentitiesOnly=yes -i "$SSH_KEY" team@10.22.0.11 \
+    'mkdir -p /home/team/hadoop-data/namenode'
+
+for host in 10.22.0.12 10.22.0.13; do
+    ssh -o BatchMode=yes -o ConnectTimeout=10 -o IdentitiesOnly=yes -i "$SSH_KEY" "team@$host" \
+        'mkdir -p /home/team/hadoop-data/datanode'
+done
+
+echo "=== HDFS directories created ==="
+
+
+echo "=== Checking NameNode format ==="
+
+ssh -o BatchMode=yes -o ConnectTimeout=10 -o IdentitiesOnly=yes -i "$SSH_KEY" team@10.22.0.11 "
+    if [ -f /home/team/hadoop-data/namenode/current/VERSION ]; then
+        echo 'NameNode already formatted'
+    else
+        echo 'Formatting NameNode...'
+        '$HADOOP_DIR/bin/hdfs' namenode -format -nonInteractive
+    fi
+"
+
+echo "=== NameNode format checked ==="
